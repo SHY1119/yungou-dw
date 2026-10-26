@@ -1,0 +1,19 @@
+# 数据文件（过大，不纳入版本库）
+data/*.csv
+*.csv
+模拟数据/
+
+# 密钥与配置
+.env
+*.key
+*.pem
+
+# 日志与临时文件
+*.log
+logs/
+__pycache__/
+node_modules/
+
+# IDE
+.idea/
+.vscode/
