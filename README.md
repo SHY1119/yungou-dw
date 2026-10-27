@@ -3,6 +3,22 @@
 > 课程：企业项目实战实训（数据科学与大数据技术）
 > 团队仓库 · 第 1 周：项目启动 · 环境搭建 · Git 基础 · 数据导入与数据清洗（一）
 
+## 团队信息
+
+- **队名**：云购数智队
+- **口号**：数据驱动零售，智慧创造生活
+- **成员**：孙浩瑜
+
+## 技术栈
+
+| 类别 | 技术 / 工具 |
+|---|---|
+| 数据仓库 | Apache Hive 4.0.1（ODS→DWD→DWS→ADS） |
+| 关系型数据库 | MySQL 8.0（Metastore 元数据库、ADS 结果回写） |
+| 容器化部署 | Docker + Docker Compose |
+| 版本控制 | Git + GitHub |
+| 后续引入 | Python(pandas/sklearn)、大模型 API(NL2SQL)、Superset/ECharts |
+
 ## 团队信息与分工
 
 | 角色 | 成员 | 职责 |
