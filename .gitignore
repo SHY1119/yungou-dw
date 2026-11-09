@@ -23,3 +23,7 @@ node_modules/
 
 # 文档截图需纳入版本控制（保持可引用）
 !docs/images/
+
+# 预测/洞察中间数据输出
+data/*.tsv
+data/forecast_eval.csv
