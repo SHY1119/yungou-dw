@@ -27,3 +27,6 @@ node_modules/
 # 预测/洞察中间数据输出
 data/*.tsv
 data/forecast_eval.csv
+
+# 数据输出目录整体不入库（数据进存储，代码进 Git）
+data/
