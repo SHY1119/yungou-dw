@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>云购生活 · 经营分析数据大屏</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="stage">
+  <div id="screen">
+    <!-- 头部 -->
+    <header class="hd">
+      <div class="hd-time" id="clock">--</div>
+      <h1 class="hd-title">云购生活 · 经营分析数据大屏</h1>
+      <div class="hd-sub">DATA WAREHOUSE VISUALIZATION · 2023-01 ~ 2024-12</div>
+    </header>
+
+    <!-- 左列 -->
+    <section class="col col-l">
+      <div class="kpi-grid" id="kpi-grid"></div>
+      <div class="panel">
+        <div class="panel-t">品类销售 Top10（GMV 占比）</div>
+        <div class="chart" id="chart-category"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-t">支付方式占比（GMV）</div>
+        <div class="chart" id="chart-pay"></div>
+      </div>
+    </section>
+
+    <!-- 中列 -->
+    <section class="col col-c">
+      <div class="panel">
+        <div class="panel-t">全年销售趋势（GMV / 环比增速）</div>
+        <div class="chart" id="chart-trend"></div>
+      </div>
+      <div class="panel panel-map">
+        <div class="panel-t">区域销售分布（各省 GMV）</div>
+        <div class="chart" id="chart-region"></div>
+      </div>
+    </section>
+
+    <!-- 右列 -->
+    <section class="col col-r">
+      <div class="panel">
+        <div class="panel-t">订单量 - 客单价相关性（按日散点）</div>
+        <div class="chart" id="chart-scatter"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-t">时段 × 品类 热力分析</div>
+        <div class="chart" id="chart-heatmap"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-t">门店销售 Top10</div>
+        <div class="chart" id="chart-store"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script src="js/echarts.min.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
