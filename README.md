@@ -1,76 +1,120 @@
-# 云购生活新零售 —— 企业级数据仓库与经营分析可视化系统
+# Yundu Life Retail — Enterprise Data Warehouse & Analytics Visualization System
 
-> 课程：企业项目实战实训（数据科学与大数据技术）
-> 团队仓库 · 第 1 周：项目启动 · 环境搭建 · Git 基础 · 数据导入与数据清洗（一）
+> Enterprise-grade offline data warehouse (ODS → DWD → DWS → ADS) with AI-powered analytics and visualization, built on the cloud-retail simulation dataset (60 stores · 1,000 members · 600 SKUs · 15,600 orders · 2024-06 ~ 2025-06).
 
-## 团队信息
+![Architecture](docs/images/04-echarts-bigscreen.png)
 
-- **队名**：云购数智队
-- **口号**：数据驱动零售，智慧创造生活
-| 角色 | 成员 | 职责 |
+## Architecture
+
+```
+CSV Sources ──► ODS (raw) ──► Clean ──► DWD (star schema, daily partitions)
+                                   │
+                                   ▼
+                    DWS (pre-aggregates) ──► ADS (KPI tables)
+                                   │
+        ┌──────────────┬───────────┼──────────────┬─────────────┐
+        ▼              ▼           ▼              ▼             ▼
+  GMV Forecast    NL2SQL Q&A   AI Insights   ECharts Big    Superset
+  (sklearn)       (LLM+pyhive) (LLM)        Screen (Flask)  Dashboard
+        └──────────────┴───────────┴──────────────┴─────────────┘
+                                   ▼
+              Docker Compose: MySQL · Hive · ClickHouse · Superset · Streamlit
+```
+
+Four-layer warehouse model:
+
+| Layer | Responsibility | Key Tables |
 |---|---|---|
-| 项目经理（兼数仓工程师） | 孙浩瑜 | 统筹进度、数仓架构设计、Git 版本管理 |
-| 数据工程师 | 孙浩瑜 | 数据导入、清洗、ODS/DWD 建模与 ETL 脚本 |
-| 数据分析师 | 孙浩瑜 | 数据质量预评估、探索性分析 |
-| 可视化/部署工程师 | 孙浩瑜 | Docker 部署、环境运维、文档 |
+| ODS | Raw ingestion, 6 tables, row counts verified against data dictionary | ods_order (15,600), ods_order_item (37,549), ods_user_behavior (60,000) |
+| DWD | Cleaning + star schema: 1 order fact + 1 order-item fact + 5 dims, partitioned by date | dwd_order (14,399), dwd_order_item (34,981) |
+| DWS | Daily / store / member pre-aggregations | 6 summary tables |
+| ADS | KPI & multi-dimensional analysis serving | 9 metric tables |
 
-## 技术栈
+## Features
 
-| 类别 | 技术 / 工具 |
+- **End-to-end verified pipeline** — every layer cross-checked: DWD GMV 36,256,326.33 = ADS KPI = region sum; daily average 99,061 × 366 days reconciled (see [联调核对清单](docs/端到端联调核对清单.md))
+- **Thorough cleaning** — five dirty-data categories handled, repair rate 98.87% (see [清洗报告](docs/数据质量清洗报告.md))
+- **Sales forecasting** — 7-day GMV prediction with LinearRegression, MAPE 13.89% vs 23.02% naive baseline
+- **NL2SQL Q&A** — natural-language question → SQL → live Hive execution → auto chart; read-only enforcement blocks write requests (6/6 test cases passed)
+- **AI insights** — LLM-generated management summaries, dual-tracked (AI draft + human verification)
+- **ECharts big screen** — 1920×1080 adaptive, 7 charts incl. China province map (standard GB administrative GeoJSON incl. South China Sea islands)
+- **Superset dashboard** — 8 charts + native filters, 3 datasources (Hive / ClickHouse / MySQL)
+- **One-command deployment** — `docker compose up -d` brings up 6 services with healthcheck dependency chain; secrets injected via `.env` only
+
+## Quick Start
+
+```bash
+# 1. Clone and configure
+git clone https://github.com/SHY1119/yungou-dw.git
+cd yungou-dw
+cp .env.example .env          # fill in your LLM API key
+
+# 2. Launch all services (MySQL, Hive Metastore/HS2, ClickHouse, Superset, Streamlit)
+docker compose up -d
+docker compose ps             # wait until all services are healthy
+
+# 3. Build the warehouse (requires Hive CLI inside container)
+docker exec hive-hiveserver2 bash /tmp/scripts/init_all.sh   # or run sql/* sequentially
+
+# 4. Access the services
+#   Streamlit Q&A:    http://localhost:8501
+#   ECharts screen:   http://localhost:5000
+#   Superset:         http://localhost:8088  (admin / set at init)
+#   HiveServer2 JDBC: jdbc:hive2://localhost:10000
+#   ClickHouse HTTP:  http://localhost:8123
+```
+
+See [部署手册](docs/部署手册.md) (Chinese) for troubleshooting and the six recorded deployment pitfalls.
+
+## Tech Stack
+
+| Category | Technology |
 |---|---|
-| 数据仓库 | Apache Hive 4.0.1（ODS→DWD→DWS→ADS） |
-| 关系型数据库 | MySQL 8.0（Metastore 元数据库、ADS 结果回写） |
-| 容器化部署 | Docker + Docker Compose |
-| 版本控制 | Git + GitHub |
-| 后续引入 | Python(pandas/sklearn)、大模型 API(NL2SQL)、Superset/ECharts |
+| Data Warehouse | Apache Hive 4.0.1 (Tez), ORC + Snappy |
+| Metadata & Serving | MySQL 8.0, ClickHouse 24.8 (acceleration layer) |
+| Modeling & Analysis | HiveQL, Python (pandas / scikit-learn) |
+| AI Integration | LLM API (OpenAI-compatible) for NL2SQL & insights, pyhive direct mode |
+| Visualization | Apache Superset 4.1.1, ECharts 5.5, Flask, Streamlit |
+| Deployment | Docker Compose, healthcheck orchestration |
+| Engineering | Git (Conventional Commits), GitHub PR/Issue workflow |
 
-## 项目目标
+## Key Results
 
-基于"云购生活"新零售企业 2024 年全年模拟经营数据（6 张表、11 万+ 条），搭建
-ODS → DWD → DWS → ADS 四层数仓，完成数据清洗、经营分析与可视化呈现。
+| Metric | Value |
+|---|---|
+| Cleaning repair rate | 98.87% |
+| GMV (13 months) | ¥36.26 M · 14,399 orders · AOV ¥2,517.98 |
+| Forecast accuracy | MAPE 13.89% (baseline 23.02%) |
+| NL2SQL test pass | 6/6 + write-request interception verified |
+| Query latency (4 concurrency) | pre-agg avg 4.62 s vs full-scan 6.08 s |
 
-## 阶段计划
-
-| 周次 | 主题 | 状态 |
-|---|---|---|
-| 第 1 周 | 环境搭建、Git 规范、ODS 导入、数据质量预评估、清洗（一） | ✅ 已完成 |
-| 第 2 周 | 数据清洗（二）、四层数仓建模、探索性分析 | ✅ 已完成 |
-| 第 3 周 | DWS/ADS 建设、KPI 指标计算与预测建模（MAPE 13.89%）完成；NL2SQL 智能问答接口经 PR 评审合入 | ✅ |
-| 第 4 周 | AI 智能洞察（NL2SQL） | ⏳ |
-| 第 5 周 | 可视化大屏与综合答辩 | ⏳ |
-
-## 仓库结构
+## Project Structure
 
 ```
 yungou-dw/
-├── docker-compose.yml        # MySQL + Hive Metastore + HiveServer2 编排
-├── docs/                     # 文档
-│   ├── 环境搭建笔记.md          # 第1周：环境问题与解决
-│   ├── 数据质量预评估表.xlsx     # 第1周：五维度扫描结果
-│   ├── 数仓架构设计文档.md       # 第2周：四层架构 + 星型模型
-│   ├── 数据质量清洗报告.md       # 第2周：五类脏数据修复率
-│   └── 探索性分析简报.md         # 第2周：核心指标与结构分析
-├── sql/
-│   ├── ods/                  # ODS 层建表与数据导入脚本
-│   ├── clean/                # 清洗脚本（缺失值/重复值/枚举/异常格式）
-│   ├── quality/              # 数据质量扫描与取值画像
-│   ├── dwd/                  # DWD 星型建模与分区加载
-│   └── eda/                  # 探索性分析查询
-├── scripts/                  # 辅助脚本
-└── data/                     # 模拟数据（.csv 已 gitignore，不入库）
+├── docker-compose.yml    # 6-service orchestration (healthcheck chain)
+├── sql/                  # ods / clean / dwd / dws / ads / eda / optimize / quality
+├── scripts/              # forecast_gmv.py, stress_test.py, nl2sql/, insight.py
+├── streamlit_app/        # NL2SQL Q&A app + Dockerfile
+├── vis/                  # bigscreen (ECharts) + backend (Flask) + api_data
+├── lib/                  # JDBC driver (bind-mounted into Hive images)
+└── docs/                 # requirements, quality report, architecture, deployment, API guide
 ```
 
-## 环境启动
+## Team
 
-```bash
-docker compose up -d     # 启动 MySQL / Hive Metastore / HiveServer2
-docker ps                # 验证三个容器均为 Up
-```
+**Team Yundu-DS (云购数智队)** — "Data drives retail, wisdom creates life."
 
-- HiveServer2 JDBC：`jdbc:hive2://localhost:10000`（beeline -n hive）
-- MySQL 元数据库：`127.0.0.1:3307`（hive/hive123，库名 metastore）
-- HiveServer2 Web UI：http://localhost:10002
+| Role | Member | Responsibility |
+|---|---|---|
+| Project Lead / DW Engineer | 孙浩瑜 (Sun Haoyu) | Architecture, ETL, Git management |
+| Data Engineer | 孙浩瑜 | Ingestion, cleaning, ODS/DWD modeling |
+| Data Analyst | 孙浩瑜 | Quality assessment, EDA, KPI definition |
+| Visualization / DevOps | 孙浩瑜 | Docker deployment, dashboards, docs |
 
-## 提交规范（Conventional Commits）
+## License & Roadmap
 
-`feat:` 新功能 · `fix:` 修复 · `docs:` 文档 · `sql:` 数仓脚本 · `chore:` 杂项
+- Stage status: Week 1–4 delivered ✅ · Week 5 integration & defense in progress
+- Roadmap: incremental ingestion (schedule-triggered), data quality monitoring & alerting, ClickHouse materialized views for the big screen, multi-user NL2SQL with role-based access.
+
+> This project was built as the capstone of the *Enterprise Project Practice* course (Data Science & Big Data program). All business data is simulated.
