@@ -1,0 +1,8 @@
+# 密钥与本地环境文件不入镜像
+**/.env
+**/.env.local
+.git
+docs
+data
+*.md
+!streamlit_app/requirements.txt
