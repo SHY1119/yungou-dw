@@ -62,15 +62,43 @@ def beeline_rows(sql):
             rows.append(parts)
     return rows
 
+# ---------- 双执行模式 ----------
+# 宿主机默认走 docker exec + beeline（无需额外依赖）；
+# 容器内（Streamlit app / compose 部署）设置 HIVE_URI=hive://hive@hiveserver2:10000/default?auth=NONE
+# 则走 pyhive 直连 Thrift 协议，容器内无需访问宿主机 Docker。
+HIVE_URI = os.environ.get('HIVE_URI', '')
+
+def _pyhive_rows(sql):
+    from pyhive import hive
+    from urllib.parse import urlparse, parse_qs
+    u = urlparse(HIVE_URI.replace('hive://', 'http://'))
+    q = parse_qs(u.query)
+    conn = hive.Connection(host=u.hostname, port=u.port or 10000,
+                           username=u.username or 'hive',
+                           database=u.path.strip('/') or 'default',
+                           auth=q.get('auth', ['NONE'])[0])
+    cur = conn.cursor()
+    cur.execute(sql)
+    rows = [list(x) for x in cur.fetchall()]
+    cols = [d[0].split('.')[-1] for d in cur.description] if cur.description else []
+    cur.close()
+    conn.close()
+    return [cols] + [[str(v) for v in r] for r in rows]
+
+def execute_sql(sql):
+    if HIVE_URI:
+        return _pyhive_rows(sql)
+    return beeline_rows(sql)
+
 def extract_schema(force=False):
     """自动抽取 Hive 表 Schema：SHOW TABLES + DESC，含字段注释"""
     if not force and os.path.exists(SCHEMA_CACHE):
         return open(SCHEMA_CACHE, encoding='utf-8').read()
     blocks = []
     for db in DATABASES:
-        tables = [r[0] for r in beeline_rows(f'SHOW TABLES IN {db}') if r]
+        tables = [r[0] for r in execute_sql(f'SHOW TABLES IN {db}') if r]
         for tb in tables:
-            cols = beeline_rows(f'DESC {db}.{tb}')
+            cols = execute_sql(f'DESC {db}.{tb}')
             fields = []
             partition_done = False
             for c in cols:
@@ -83,7 +111,7 @@ def extract_schema(force=False):
                 fields.append(f"{c[0]}({c[1]}{'#' + comment if comment else ''})")
             blocks.append(f"{db}.{tb}: " + ', '.join(fields))
     # 补充数据范围说明，帮助模型解析相对时间
-    rng = beeline_rows("SELECT MIN(order_date), MAX(order_date) FROM ydsh_dwd.dwd_order")
+    rng = execute_sql("SELECT MIN(order_date), MAX(order_date) FROM ydsh_dwd.dwd_order")
     if rng:
         blocks.append(f"# 数据范围说明: 订单数据日期区间 {rng[0][0]} ~ {rng[0][1]}，"
                       f"用户提到'上月/最近'等相对时间时以 MAX(order_date) 为基准换算")
@@ -168,10 +196,6 @@ def generate_sql(question, schema):
         max_tokens=512,
     )
     return validate_sql(resp.choices[0].message.content)
-
-def execute_sql(sql):
-    rows = beeline_rows(sql)
-    return rows
 
 def answer(question, schema=None):
     schema = schema or extract_schema()

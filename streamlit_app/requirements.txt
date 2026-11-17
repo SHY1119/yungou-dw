@@ -1,0 +1,9 @@
+streamlit>=1.40
+pyecharts>=2.0
+pandas>=2.0
+openai>=1.50
+pyhive>=0.7
+thrift>=0.20
+# pure-sasl 替代 sasl（后者含 C 扩展，容器内编译易失败）
+thrift-sasl>=0.4
+pure-sasl>=0.6
